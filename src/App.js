@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   FaEnvelopeOpen,
   FaUser,
@@ -12,12 +12,16 @@ const url = "https://randomuser.me/api";
 const defaultPortrait = "https://randomuser.me/api/portraits/men/75.jpg";
 
 function App() {
+  // initial states
   const [isLoading, setIsLoading] = useState(true);
   const [person, setPerson] = useState(null);
   const [title, setTitle] = useState("name");
   const [value, setValue] = useState("random person");
 
-  // array of buttons
+  // fetching ref
+  const shouldFetch = useRef(true);
+
+  // array of info buttons
   const infoButtons = [
     { id: "0", icon: <FaUser />, tag: "name" },
     { id: "1", icon: <FaEnvelopeOpen />, tag: "email" },
@@ -27,14 +31,72 @@ function App() {
     { id: "5", icon: <FaLock />, tag: "password" },
   ];
 
+  // value state handling function
   const handleValue = (e) => {
-    console.log(e.target);
+    if (e.target.classList.contains("icon")) {
+      const newValue = e.target.dataset.label;
+      setTitle(newValue);
+      setValue(person[newValue]);
+    }
   };
+
+  // fetching functionality
+  const getUser = async () => {
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(url);
+      if (response.ok) {
+        const data = await response.json();
+        const person = data.results[0];
+        const { phone, email } = person;
+        const { large: image } = person.picture;
+        const {
+          login: { password },
+        } = person;
+        const { first, last } = person.name;
+        const {
+          dob: { age },
+        } = person;
+        const {
+          street: { number, name },
+        } = person.location;
+
+        const newPerson = {
+          image,
+          phone,
+          email,
+          password,
+          age,
+          street: `${number} ${name}`,
+          name: `${first} ${last}`,
+        };
+
+        setPerson(newPerson);
+        setTitle("name");
+        setValue(newPerson.name);
+      } else {
+        console.log("error");
+      }
+    } catch (error) {
+      console.log(error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (shouldFetch.current) {
+      shouldFetch.current = false;
+      getUser();
+    }
+  }, []);
 
   return (
     <main>
       <div className="block bcg-black"></div>
       <div className="block">
+        {/* user image & info */}
         <div className="container">
           <img
             src={(person && person.image) || defaultPortrait}
@@ -42,21 +104,31 @@ function App() {
           />
           <p className="user-title">my {title} is</p>
           <p className="user-value">{value}</p>
+          {/* user image & info */}
+
+          {/* map the info buttons */}
           <div className="values-list">
-            {/* map the buttons */}
             {infoButtons.map((button) => {
               const { id, icon, tag } = button;
               return (
-                <button key={id} data-label={tag} onMouseOver={handleValue}>
+                <button
+                  key={id}
+                  data-label={tag}
+                  className="icon"
+                  onMouseOver={handleValue}
+                >
                   {icon}
                 </button>
               );
             })}
-            {/* map the buttons */}
           </div>
-          <button className="btn" type="button">
+          {/* map the info buttons */}
+
+          {/* fetch button */}
+          <button className="btn" type="button" onClick={getUser}>
             {isLoading ? "loading..." : "random user"}
           </button>
+          {/* fetch button */}
         </div>
       </div>
     </main>
